@@ -8,15 +8,13 @@
 #define BOB_GROUND_LEVEL          60
 #define NUMBER_OF_BUBBLES 7
 //////////////////////////////
-
 uint8_t count_bubble = 0;
+uint16_t point = 10;
 /////////////////////////////////
 ////////////////적만들기시작/////////////////////////////////////////////////////////////////////////////////////////////
-
 #define NUMBER_OF_OBSTACLES 4
 #define OBSTACLE_LAUNCH_DELAY_MIN   90
 #define OBSTACLE_LAUNCH_DELAY_MAX   200
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 enum class GameStatus : uint8_t {
   Introduction,
@@ -47,7 +45,6 @@ void drawlevel() {
     }
   }
   break;
-
 //////
  case 1:
     {
@@ -62,9 +59,7 @@ void drawlevel() {
       }
     }
   }
-
   break;
-
 ///////
  case 2:
     {
@@ -79,9 +74,7 @@ void drawlevel() {
       }
     }
   }
-
   break;
-
 /////
  case 3:
     {
@@ -113,7 +106,6 @@ bool isSolid(uint8_t tileIndex){
        return false;
            }
      }
-
 //////////////////////
 // isPointInTile() function
 bool isPointInTile(uint8_t x, uint8_t y) {
@@ -140,7 +132,6 @@ enum class Stance : uint8_t {
   Dead,
 };
 
-
 struct Bob {
   uint8_t x;
   uint8_t y;
@@ -153,17 +144,34 @@ struct Bob {
   const uint8_t *mask;
 };
 
-////////////
+///////////////최종 boss, final boss is steve. He is big and angry.
+enum class steveStance : uint8_t {
+  Running1,
+  Running2,
+  Stunned1,
+  Stunned2,
+  Dead1,
+};
+
+struct Steve {
+  uint8_t x;
+  uint8_t y;
+  steveStance stance;
+  bool enabled;
+  bool stunned;
+  uint8_t stunIndex;
+  const uint8_t *image;
+  const uint8_t *mask;
+};
+//////////////////////////////////////////////////////////////최종 boss 끝
 enum class BubbleType : uint8_t {
   R_Shoot,
   L_Shoot,
   Captured,
-  L_Captured,
   Up_Bubble,
   Pop_Bubble,
 };
 //////////////////////////
-
 //////////////////////////
 struct Bubble{
   int8_t x;
@@ -175,7 +183,6 @@ struct Bubble{
 
 ///////////////////////
 //////////////////////////적만들기 ObstacleType//////////////////////////////////////////////////////////////////////////////////////////
-
 enum class ObstacleType: uint8_t {
   Benzo1,
   Benzo2,
@@ -183,13 +190,11 @@ enum class ObstacleType: uint8_t {
   Bonnie2,
   Boa1,
   Boa2,
-  Blubba1, 
+  Blubba1,
   Blubba2,
   Count_AllObstacles = 7,
 };
-
 /////////////////////Obstacle struct///////////////////////////////////////////////////////////////////////////////////////////
-
 struct Obstacle {
   int8_t x;
   int8_t y;
@@ -203,16 +208,14 @@ struct Obstacle {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 Arduboy2 arduboy;
 ArduboyTones sound(arduboy.audio.enabled);
-
 Bob bob = {0, BOB_GROUND_LEVEL, Stance::R_Standing, false, false, false, false, bob_R_still, bob_R_still_mask };
 uint8_t jumpCoords[] = { 3, 3, 2, 2, 2, 1, 1, 1, 1};
 uint8_t fallCoords[] = { 3, 2, 1, 2, 2, 1, 2, 2, 1};
+uint8_t stunCoords[] = {3,3,3};
 GameStatus gameStatus = GameStatus::Introduction;
 ////////////////////////////////////////////6개만 생성
-
 Bubble bubbles[NUMBER_OF_BUBBLES]{
   {1,1,BubbleType::R_Shoot,false, bubble_R_shoot},
   {1,1,BubbleType::R_Shoot,false, bubble_R_shoot},
@@ -233,34 +236,37 @@ Obstacle obstacles[NUMBER_OF_OBSTACLES] = {
   {0,0, ObstacleType::Benzo1, false, false, false,false,false, benzo_1},
 };
 
+
+
 uint16_t obstacleLaunchCountdown = OBSTACLE_LAUNCH_DELAY_MIN;
 
-uint16_t point = 10;
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const uint8_t *bob_images[] = { bob_R_still,bob_R_running_1,bob_R_running_2,bob_R_bubble,bob_L_running_1,bob_L_running_2,bob_L_bubble,bob_dead };
 const uint8_t *bob_masks[] = { bob_R_still_mask, bob_R_running_1_mask, bob_R_running_2_mask, bob_R_bubble_mask,  bob_L_running_1_mask, bob_L_running_2_mask, bob_L_bubble_mask, bob_dead_mask };
 //////////////
-const uint8_t *bubble_images[] = { bubble_R_shoot, bubble_L_shoot, bubble_R_captured, bubble_L_captured, bubble_pop };
-/////////////////////////
-///////////////////////// 적을 만들자//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-const uint8_t *obstacle_images[] = { benzo_1, benzo_2, bonnie_1, bonnie_2, boa_1, boa_2, blubba_1, blubba_2 };
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+const uint8_t *bubble_images[] = { bubble_R_shoot, bubble_L_shoot, bubble_captured,  bubble_pop, bubble_up };
 
+/////////////////////////
+
+///////////////////////// 적을 만들자//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const uint8_t *obstacle_images[] = { benzo_1, benzo_2, bonnie_1, bonnie_2, boa_1, boa_2, blubba_1, blubba_2 };
+
+//////////////////////////////////////////////steve 초기화/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Steve steve = {136 , BOB_GROUND_LEVEL, steveStance::Running1, false, false,false,steve_running1, steve_running1_mask };
+const uint8_t *steve_images[] = { steve_running1, steve_running2, steve_stunned1,steve_stunned2, steve_dead1 };
+const uint8_t *steve_masks[] = { steve_running1_mask, steve_running2_mask, steve_stunned1_mask,steve_stunned2_mask, steve_dead1_mask };
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Setup the environment ..
  * -----------------------------------------------------------------------------------------------------------------------------
  */
-void setup() { 
+void setup() {
   arduboy.boot();
   arduboy.setFrameRate(75);
   arduboy.initRandomSeed();
   arduboy.audio.begin();
-
 }
-
-
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Control the various states of the game ..
  * -----------------------------------------------------------------------------------------------------------------------------
@@ -289,7 +295,6 @@ void loop() {
   }
 }
 
-
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Reset everything ready for a new game ..
  * -----------------------------------------------------------------------------------------------------------------------------
@@ -305,7 +310,6 @@ void initialiseGame() {
   for (uint8_t i = 0; i < NUMBER_OF_BUBBLES; i++) {
     bubbles[i].shooting = false;
   }
-
   /////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////적들을 초기화 시킴/////////////
     for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {
@@ -317,10 +321,19 @@ void initialiseGame() {
     obstacles[i].jumpIndex =0;
     obstacles[i].fallIndex = 0;
     obstacles[i].type = ObstacleType::Benzo1;
-
   }
-////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////steve를 초기화 시킴//////////////////////////////////////////////////////////////////////
+////steve_point =0;
+  steve.x = 136;
+  steve.y = BOB_GROUND_LEVEL;
+  steve.enabled = false;
+  steve.stunned = false;
+  steve.stunIndex = 0;
+  steve.stance = steveStance::Running1;
+/////////////////////////////////////////////////////////////////////////////
+
 }
+
 
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Display the introduction ..
@@ -340,14 +353,12 @@ void introduction() {
   arduboy.display();
   if (arduboy.pressed(A_BUTTON)) {
     sound.tones(shooting_bubble);
-    arduboy.audio.off(); 
+    arduboy.audio.off();
     /////////////////////
     gameStatus = GameStatus::PlayGame;
     bob.stance = Stance::R_Running1;
   }
 }
-
-
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Display the 'Game Over' text if Bob has hit an obstacle ..
  * -----------------------------------------------------------------------------------------------------------------------------
@@ -369,30 +380,39 @@ void gameOver() {
   }
 }
 
-
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Run Bob, run.
  * -----------------------------------------------------------------------------------------------------------------------------
  */
+
 void playGame() {
   arduboy.clear();
   arduboy.setCursor(0, 0);
   //arduboy.print(count_bubble);
   arduboy.audio.on();
-  if(point <99) {
-    
+  if(point <99) {  
     arduboy.print(point);
     memcpy( world, world, sizeof(uint8_t)*32*4);}
-  if(point >99 && point <199) {
-    
+  if(point >99 && point <199) {   
     arduboy.print(point);
     memcpy( world, world2, sizeof(uint8_t)*32*4);}
-   if(point >199 && point <399 ) {
-    
+   if(point >199 && point <399 ) {  
     arduboy.print(point);
-    memcpy( world, world3, sizeof(uint8_t)*32*4);} 
+    memcpy( world, world3, sizeof(uint8_t)*32*4);}
     if(point >399) {
       arduboy.clear();
+      //steve_point=point;
+      //initialiseGame();<---이거빼...
+         for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {
+           obstacles[i].x = WIDTH;
+           obstacles[i].y = 12;
+           obstacles[i].enabled = false;
+           obstacles[i].jumping=false;
+           obstacles[i].falling=false;
+           obstacles[i].jumpIndex =0;
+           obstacles[i].fallIndex = 0;
+           obstacles[i].type = ObstacleType::Benzo1;
+            }      
       gameStatus = GameStatus::EndGame;
     }
   drawlevel();
@@ -401,11 +421,9 @@ void playGame() {
     if (arduboy.justPressed(UP_BUTTON)) { bob.jumping = true; bob.jumpIndex = 0; }
     if (arduboy.justPressed(B_BUTTON))  {
           if (bob.stance == Stance::R_Running1 || bob.stance == Stance::R_Running2) {
-                 bob.stance = Stance::R_Bubble;
-                 //beep.tone(beep.freq(1000),50);
-                 
+                 bob.stance = Stance::R_Bubble;                               
                if (!sound.playing()) sound.tones(shooting_bubble);
-               if(count_bubble < 6 ){               
+               if(count_bubble < 6 ){              
                      count_bubble++;
                      bubbles[count_bubble].shooting=true;
                      bubbles[count_bubble].b_type = BubbleType::R_Shoot;
@@ -416,7 +434,6 @@ void playGame() {
                     updateBubbles();
                  }
                  if(count_bubble==6){count_bubble=0;}
-
           if (bob.stance == Stance::L_Running1 || bob.stance == Stance::L_Running2) {
                  bob.stance = Stance::L_Bubble;
                  if (!sound.playing()) sound.tones(shooting_bubble);
@@ -432,56 +449,43 @@ void playGame() {
                  }
                  if(count_bubble==6){count_bubble=0;}
                }
-
     if (arduboy.pressed(LEFT_BUTTON) && bob.x > 0 && !bob.falling )  {
        bob.stance = Stance::L_Running1;
        if(!isPointInTile(bob.x, bob.y)&&!isPointInTile(bob.x+8,bob.y)){bob.falling=true; bob.fallIndex = 0;}
        else
        bob.x--;
        }
-
     if (arduboy.pressed(RIGHT_BUTTON) && bob.x < 120&& !bob.falling )         {
         bob.stance = Stance::R_Running1;
         if(!isPointInTile(bob.x, bob.y)&& !isPointInTile(bob.x+8, bob.y)){bob.falling=true; bob.fallIndex =0;}
-
         else
         bob.x++;
         }
-
     // If the player has not pressed the B button (or continued to hold it down)
     // and Bob is bubbling, then return him to an running position ..
-
     if (arduboy.notPressed(B_BUTTON) && bob.stance == Stance::R_Bubble) {
       bob.stance = Stance::R_Running1;
     }
-
-
     if (arduboy.notPressed(B_BUTTON) && bob.stance == Stance::L_Bubble) {
       bob.stance = Stance::L_Running1;
     }
   }
-
 //////////////////////////////////////////////////////////////////////////////////////////
-
 // Should we launch another obstacle?
- 
   --obstacleLaunchCountdown;
- 
   if (obstacleLaunchCountdown == 0) {
     for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {
-      if (!obstacles[i].enabled) { 
-        launchObstacle(i); 
+      if (!obstacles[i].enabled) {
+        launchObstacle(i);
         ////////////////////////////////////////////////////////////////////////////////////////여기서 부터.............................................................
         break;
       }
     }
-    obstacleLaunchCountdown = random(OBSTACLE_LAUNCH_DELAY_MIN, OBSTACLE_LAUNCH_DELAY_MAX);           
+    obstacleLaunchCountdown = random(OBSTACLE_LAUNCH_DELAY_MIN, OBSTACLE_LAUNCH_DELAY_MAX);          
   }
 ///////////////////////////////////////////////
   // Has Steve collided with anything?/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   if (collision()) {
-
     bob.jumping = false;
     bob.jumpIndex = 0;    
     if (bob.stance <= Stance::R_Running2) {
@@ -507,7 +511,6 @@ void playGame() {
   }
 }
 
-
 void updateBob() {
   // Is Bob jumping ?
   if (bob.jumping) {
@@ -523,10 +526,10 @@ void updateBob() {
     }
     else
      bob.falling=false;
+
   }
  // is Bob falling?
-
-if (bob.falling){
+  if (bob.falling){
     bob.y = bob.y+fallCoords[bob.fallIndex];
     bob.fallIndex++;
       if(bob.fallIndex == sizeof(fallCoords)) {
@@ -536,10 +539,8 @@ if (bob.falling){
           else
             bob.fallIndex = 0;
           }
-}
-
-//
-
+     }
+////////
  else {
     // Swap the image to simulate running ..
     if (arduboy.everyXFrames(3)) {
@@ -564,11 +565,8 @@ if (bob.falling){
 }
 
 
-
-
-
 /* -----------------------------------------------------------------------------------------------------------------------------
- *  Render Bob.
+ *  Render Bob
  *
  *  The standing and jumping and bubbling images are rendered relative to the ground, so the image height is subtracted from the current Y
  *  position to determine an upper top position.
@@ -581,22 +579,22 @@ void drawBob() {
   bob.mask = bob_masks[imageIndex];
   Sprites::drawExternalMask(bob.x, bob.y - getImageHeight(bob.image), bob.image, bob.mask, 0, 0);
 }
-
 //////////////////////////////////////// Render Bubble
-
 void updateBubbles() {
   for (uint8_t i = 0; i < NUMBER_OF_BUBBLES; i++) {
     if (bubbles[i].shooting == true) {
       /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////4/13
-
       switch (bubbles[i].b_type) {
-        case BubbleType::R_Shoot: 
+        case BubbleType::R_Shoot:
           bubbles[i].x++;
           break;
         case BubbleType::L_Shoot:
           bubbles[i].x--;
           break;
        case BubbleType::Captured:    
+          bubbles[i].y--;
+          break;
+       case BubbleType::Up_Bubble:    
           bubbles[i].y--;
           break;
       }
@@ -606,14 +604,12 @@ void updateBubbles() {
           bubbles[i].shooting = false;
           if(count_bubble >0){count_bubble--;}
           }
-    }
-   
+    }  
   }
 }
 
-
+/////////////////// update bubbles's end
 ///////////////////////// drawing bubble
-
 void drawBubbles() {
    for (uint8_t i = 0; i < NUMBER_OF_BUBBLES; i++) {    
       if (bubbles[i].shooting == true) {
@@ -625,39 +621,58 @@ void drawBubbles() {
        uint8_t imageIndex = static_cast<uint8_t>(bubbles[i].b_type);
         bubbles[i].image = bubble_images[imageIndex];
         Sprites::drawOverwrite(bubbles[i].x, bubbles[i].y - getImageHeight(bubbles[i].image), bubbles[i].image, 0);      
-                                        }                                   
+                                        }    
+      if(steve_capturing(i)&&steve.enabled==true){       
+        uint8_t imageIndex = static_cast<uint8_t>(bubbles[i].b_type);
+        bubbles[i].image = bubble_images[imageIndex];
+        Sprites::drawOverwrite(bubbles[i].x, bubbles[i].y - getImageHeight(bubbles[i].image), bubbles[i].image, 0);      
+                                         
+        steve.stunned=true;
+        //steve_point=steve_point+100;                            
+      }
       }
     }
-  
+
+ 
+
+
 
  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
  /* -----------------------------------------------------------------------------------------------------------------------------
+
  *  Update the position of any visible obstacles ..
+
  *
+
  *  If the obstacle has completely off screen, then disable it.  Pterodactyls move 1 pixel per update whereas cacti move one
+
  *  pixel every second iteration.
+
  * -----------------------------------------------------------------------------------------------------------------------------
+
  */
 
+
+
 void updateObstacles() {
-  for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {   
-    if (obstacles[i].enabled == true) {     
+  for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {  
+    if (obstacles[i].enabled == true) {    
       switch (obstacles[i].type) {
         case ObstacleType::Benzo1:
         case ObstacleType::Benzo2:
          if (arduboy.everyXFrames(6)) {
-            if (obstacles[i].type == ObstacleType::Benzo1) { 
+            if (obstacles[i].type == ObstacleType::Benzo1) {
                 obstacles[i].type = ObstacleType::Benzo2;
+
             }
             else {
               obstacles[i].type = ObstacleType::Benzo1;
             }
           }
-////////////////////////////////////////////////////
-        
+////////////////////////////////////////////////////      
         if(obstacles[i].x < bob.x && !obstacles[i].falling && !obstacles[i].jumping){ if(bob.x%2==1){obstacles[i].x++;}}
-        if(obstacles[i].x > bob.x && !obstacles[i].falling && !obstacles[i].jumping){ if(bob.x%2==1){obstacles[i].x--;}}
-        
+        if(obstacles[i].x > bob.x && !obstacles[i].falling && !obstacles[i].jumping){ if(bob.x%2==1){obstacles[i].x--;}}     
         if(!isPointInTile(obstacles[i].x, obstacles[i].y)&&!isPointInTile(obstacles[i].x+8, obstacles[i].y)&& !obstacles[i].jumping){
           obstacles[i].falling=true;                
           obstacles[i].y = obstacles[i].y+fallCoords[obstacles[i].fallIndex];
@@ -668,13 +683,12 @@ void updateObstacles() {
                    obstacles[i].fallIndex = 0;
                   }
               else
-                    obstacles[i].fallIndex = 0;
+                   obstacles[i].fallIndex = 0;
               }
          }
 /////////////////////////////////////////////////////////////
  // bob 이 적 위에 있으면
-
-        if(arduboy.pressed(LEFT_BUTTON)&& obstacles[i].y > bob.y && !obstacles[i].falling && isPointInTile(bob.x-8, bob.y)) { 
+        if(arduboy.pressed(LEFT_BUTTON)&& obstacles[i].y > bob.y && !obstacles[i].falling && isPointInTile(bob.x-8, bob.y)) {
           obstacles[i].jumping = true;
           obstacles[i].y = obstacles[i].y-jumpCoords[obstacles[i].jumpIndex];
           obstacles[i].jumpIndex++;
@@ -685,52 +699,39 @@ void updateObstacles() {
                 }
                 else
                 obstacles[i].jumpIndex =0;
-             }
-             
+             }           
         }        
 ////////////////////////////////////////////////////////////
           break;
-
-
-
         case ObstacleType::Bonnie1:
-        case ObstacleType::Bonnie2:
-       
+        case ObstacleType::Bonnie2:       
           if (arduboy.everyXFrames(6)) {
-            if (obstacles[i].type == ObstacleType::Bonnie1) { 
+            if (obstacles[i].type == ObstacleType::Bonnie1) {
               obstacles[i].type = ObstacleType::Bonnie2;
             }
             else {
               obstacles[i].type = ObstacleType::Bonnie1;
-
             }
-
           }
-
           obstacles[i].x--;
-
           break;
-
+          
         case ObstacleType::Boa1:
-        case ObstacleType::Boa2:       
+        case ObstacleType::Boa2:      
           if (arduboy.everyXFrames(6)) {
-            if (obstacles[i].type == ObstacleType::Boa1) { 
+            if (obstacles[i].type == ObstacleType::Boa1) {
               obstacles[i].type = ObstacleType::Boa2;
             }
             else {
               obstacles[i].type = ObstacleType::Boa1;
             }
-
           }
-
           obstacles[i].x--;
-
           break;
-
         case ObstacleType::Blubba1:
         case ObstacleType::Blubba2:        
           if (arduboy.everyXFrames(6)) {
-            if (obstacles[i].type == ObstacleType::Blubba1) { 
+            if (obstacles[i].type == ObstacleType::Blubba1) {
               obstacles[i].type = ObstacleType::Blubba2;
             }
             else {
@@ -738,26 +739,21 @@ void updateObstacles() {
             }
           }
           obstacles[i].x++;
-
           break;
-      
       }
-
-      
+  
       // Has the obstacle moved out of view ?
       if (obstacles[i].x < -getImageWidth(obstacles[i].image)|| obstacles[i].x>129) {
-        obstacles[i].enabled = false; 
+        obstacles[i].enabled = false;
       }
-    }   
+    }  
   }
 }
-
 
 /* -----------------------------------------------------------------------------------------------------------------------------
  *  Render any visible obstacles on the screen ..
  * -----------------------------------------------------------------------------------------------------------------------------
  */
-
 void drawObstacles() {
   for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {
     if (obstacles[i].enabled == true) {
@@ -778,13 +774,13 @@ void launchObstacle(uint8_t obstacleNumber) {
   // Randomly pick an obstacle ..  
   ObstacleType randomUpper = ObstacleType::Benzo1;
   switch (point) {
-    case 0 ... 99: 
+    case 0 ... 99:
       randomUpper = ObstacleType::Benzo1;
       break;
-    case 100 ... 199: 
+    case 100 ... 199:
       randomUpper = ObstacleType::Bonnie1;
       break;
-    case 200 ... 299: 
+    case 200 ... 299:
       randomUpper = ObstacleType::Boa1;
       break;
     default:
@@ -801,7 +797,7 @@ void launchObstacle(uint8_t obstacleNumber) {
   obstacles[obstacleNumber].x = WIDTH - 1;
   if(type == ObstacleType::Benzo1||type==ObstacleType::Benzo2) {
      switch(obstacleNumber){
-      case 1 ... 3:     
+      case 1 ... 3:    
      obstacles[obstacleNumber].y = 12;
      break;
      case 0:
@@ -826,7 +822,6 @@ void launchObstacle(uint8_t obstacleNumber) {
       obstacles[obstacleNumber].y = 28;
       break;
     }
-    
   }  
 }
 
@@ -835,24 +830,35 @@ void launchObstacle(uint8_t obstacleNumber) {
  *  boss와 싸우는 곳
  * -----------------------------------------------------------------------------------------------------------------------------
  */
+
 void endGame() {
   arduboy.clear();
   arduboy.setCursor(0, 0);
-  arduboy.print("endgame");
+  arduboy.print(point);
   arduboy.audio.on();
   memcpy( world, world1, sizeof(uint8_t)*32*4);
-  if(point == 500){gameStatus = GameStatus::HappyEnd;}
+  if(point > 900){ steve.stance=steveStance::Stunned1;}
+  if(point > 1000){
+       steve.enabled=false;
+       //bob.x=3; bob.y=BOB_GROUND_LEVEL;
+       steve.x=120;
+       steve.stance=steveStance::Dead1;
+       gameStatus = GameStatus::HappyEnd;
+           }
   drawlevel();
+  //steve_point=600;
+  steve.enabled=true;
+  //if(steve.enabled)
+    //      { drawSteve();}
+
  // The player can only control Bob if he is running  on the ground ..
   if (!bob.jumping&&!bob.falling) {
     if (arduboy.justPressed(UP_BUTTON)) { bob.jumping = true; bob.jumpIndex = 0; }
     if (arduboy.justPressed(B_BUTTON))  {
           if (bob.stance == Stance::R_Running1 || bob.stance == Stance::R_Running2) {
-                 bob.stance = Stance::R_Bubble;
-                 //beep.tone(beep.freq(1000),50);
-                 
+                 bob.stance = Stance::R_Bubble;                       
                if (!sound.playing()) sound.tones(shooting_bubble);
-               if(count_bubble < 6 ){               
+               if(count_bubble < 6 ){              
                      count_bubble++;
                      bubbles[count_bubble].shooting=true;
                      bubbles[count_bubble].b_type = BubbleType::R_Shoot;
@@ -867,7 +873,7 @@ void endGame() {
           if (bob.stance == Stance::L_Running1 || bob.stance == Stance::L_Running2) {
                  bob.stance = Stance::L_Bubble;
                  if (!sound.playing()) sound.tones(shooting_bubble);
-                     if(count_bubble < 6 ){                
+                     if(count_bubble < 6 ){               
                      count_bubble++;                  
                      bubbles[count_bubble].shooting=true;
                      bubbles[count_bubble].b_type = BubbleType::L_Shoot;
@@ -879,56 +885,31 @@ void endGame() {
                  }
                  if(count_bubble==6){count_bubble=0;}
                }
-
     if (arduboy.pressed(LEFT_BUTTON) && bob.x > 0 && !bob.falling )  {
        bob.stance = Stance::L_Running1;
        if(!isPointInTile(bob.x, bob.y)&&!isPointInTile(bob.x+8,bob.y)){bob.falling=true; bob.fallIndex = 0;}
        else
        bob.x--;
        }
-
     if (arduboy.pressed(RIGHT_BUTTON) && bob.x < 120&& !bob.falling )         {
         bob.stance = Stance::R_Running1;
         if(!isPointInTile(bob.x, bob.y)&& !isPointInTile(bob.x+8, bob.y)){bob.falling=true; bob.fallIndex =0;}
-
         else
         bob.x++;
         }
-
     // If the player has not pressed the B button (or continued to hold it down)
     // and Bob is bubbling, then return him to an running position ..
-
     if (arduboy.notPressed(B_BUTTON) && bob.stance == Stance::R_Bubble) {
       bob.stance = Stance::R_Running1;
     }
-
-
     if (arduboy.notPressed(B_BUTTON) && bob.stance == Stance::L_Bubble) {
       bob.stance = Stance::L_Running1;
     }
   }
-
 //////////////////////////////////////////////////////////////////////////////////////////
-
-// Should we launch another obstacle?
- 
-  --obstacleLaunchCountdown;
- 
-  if (obstacleLaunchCountdown == 0) {
-    for (uint8_t i = 0; i < NUMBER_OF_OBSTACLES; i++) {
-      if (!obstacles[i].enabled) { 
-        launchObstacle(i); 
-        ////////////////////////////////////////////////////////////////////////////////////////여기서 부터.............................................................
-        break;
-      }
-    }
-    obstacleLaunchCountdown = random(OBSTACLE_LAUNCH_DELAY_MIN, OBSTACLE_LAUNCH_DELAY_MAX);           
-  }
 ///////////////////////////////////////////////
   // Has Steve collided with anything?/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  if (collision()) {
-
+  if (collision_steve()) {
     bob.jumping = false;
     bob.jumpIndex = 0;    
     if (bob.stance <= Stance::R_Running2) {
@@ -947,23 +928,24 @@ void endGame() {
     updateBubbles();
     drawBubbles();
 //////////////////////////////////적을만들자 Let's make obstacles
-    updateObstacles();
-    drawObstacles();
+    updateSteve();
+    drawSteve();
 //////////////////////////////////////////////////////////////////////////////////////////////////
     arduboy.display();
   }
 }
 
 //////////////////////endGame 마지막
-
-
 void happyEnd(){
   arduboy.clear();
   //drawBob();
+  bob.x=0; bob.y=44;
+  drawSteve();
   arduboy.setCursor(40, 12);
   arduboy.print(F("You win!!!"));
   arduboy.audio.off();
   //updateBob();
+  updateSteve();
   arduboy.display();
   if (arduboy.justPressed(A_BUTTON)) {
     initialiseGame();
@@ -971,5 +953,65 @@ void happyEnd(){
     gameStatus = GameStatus::PlayGame;
     bob.stance = Stance::R_Running1;
   }
+}
+
+
+
+///////////////////////////////////////////
+
+void drawSteve(){
+  uint8_t imageIndex = static_cast<uint8_t>(steve.stance);
+  steve.image = steve_images[imageIndex];
+  steve.mask = steve_masks[imageIndex];
+  Sprites::drawExternalMask(steve.x, steve.y - getImageHeight(steve.image), steve.image, steve.mask, 0, 0); 
+}
+
+
+
+/////////////////////////////
+
+void updateSteve() {
   
+  if( bob.y >15 && steve.x>4  )
+  { steve.x=steve.x-random(0,2); 
+  }
+  else {
+    // Swap the image to simulate running ..
+    if (arduboy.everyXFrames(3)) {
+      switch (steve.stance) {  
+        case steveStance::Running1:
+          steve.stance = steveStance::Running2;
+          break;      
+        case steveStance::Running2:
+          steve.stance = steveStance::Running1;
+          break;
+        default:
+          break;      
+      }
+    }///////////////////////////////////
+  }
+  if( bob.y < 15 && steve.x<124 )
+  { steve.x++;}
+  else {
+    // Swap the image to simulate running ..
+    if (arduboy.everyXFrames(3)) {
+      switch (steve.stance) {  
+        case steveStance::Running1:
+          steve.stance = steveStance::Running2;
+          break;      
+        case steveStance::Running2:
+          steve.stance = steveStance::Running1;
+          break;
+       case steveStance::Stunned1:
+          steve.stance = steveStance::Stunned2;
+          break;      
+        case steveStance::Stunned2:
+          steve.stance = steveStance::Stunned1;
+          break;       
+        default:
+          break;      
+      }
+    }///////////////////////////////////
+  }
+
 }
